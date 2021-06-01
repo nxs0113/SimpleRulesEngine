@@ -44,38 +44,129 @@ namespace RulesEngine.Core
             return expr;
         }
 
+        private Expression BuildExpression(RuleToken operand, ParameterExpression pramExpr)
+        {
+            if (operand.RuleTokenType == TokenType.Operand)
+            {
+
+                return Expression.Convert(Expression.Property(
+                    Expression.Convert(
+                        Expression.Property(
+                            Expression.Call(pramExpr, "Property", null, Expression.Constant(operand.Value))
+                            , "Value")
+                        , typeof(JValue))
+                    , "Value"), operand.CorrespondingType);
+            }
+            return null;
+        }
+
         private dynamic BuildExpression(List<RuleToken> rawTokens, int startIndex)
         {
             Expression result = Expression.Empty();
-            var param = rawTokens[startIndex];
+            var lToken = rawTokens[startIndex];
 
-            var item = Expression.Parameter(typeof(JObject), "item");
-            var body = Expression.Convert(Expression.Property(
-                Expression.Convert(
-                    Expression.Property(
-                        Expression.Call(item, "Property", null, Expression.Constant(param.Value))
-                        , "Value")
-                    , typeof(JValue))
-                , "Value"), param.CorrespondingType);
+            var param = Expression.Parameter(typeof(JObject), "item");
+            Expression lhs = BuildExpression(lToken, param);
 
             var op = rawTokens[startIndex + 1];
+            Expression rhs = BuildExpression(rawTokens[startIndex + 2], param);
+            if (rhs == null)
+            {
+                if (op.Value == "IN" || op.Value == "NOTIN")
+                {
+                    Func<string, int> f = x => int.Parse(x);
+                    //.Lambda #Lambda1<System.Func`2[System.String,System.Int32]>(System.String $x) {
+                    //.Call System.Int32.Parse($x)
+                    //}
+                    var splits = rawTokens[startIndex + 2].Value.Split(',');
+                    //var paramk = Expression.Parameter(typeof(String), "item");
 
-            var rhs = Expression.Constant(Convert.ChangeType(rawTokens[startIndex + 2].Value, param.CorrespondingType), param.CorrespondingType);
+                    //Type converterType = typeof(Converter<,>);
+                    //Type[] typeArgs = { typeof(string), lToken.CorrespondingType };
+                    //Type closedConverterType = converterType.MakeGenericType(typeArgs);
+
+                    //var converter = Expression.Lambda(
+                    //    Expression.Convert(Expression.Convert(
+                    //    paramk
+                    //    , lToken.CorrespondingType), closedConverterType),
+                    //    paramk);
+
+
+                    //var method = typeof(Array).GetMethod("ConvertAll").MakeGenericMethod(new Type[] { typeof(string), lToken.CorrespondingType });
+                    //var arrayBuilder = Expression.Call(method, Expression.Constant(splits), converter);
+
+                    //Type d1 = typeof(List<>);
+                    //Type[] typeArgs = { lToken.CorrespondingType };
+                    //Type DynamicListType = d1.MakeGenericType(typeArgs);
+                    //dynamic DynamicListObj = Activator.CreateInstance(DynamicListType);
+                    var listObj = new List<object>();
+                    foreach (var split in splits)
+                    {
+                        listObj.Add(Convert.ChangeType(split, lToken.CorrespondingType));
+                    }
+
+                    rhs = Expression.Constant(listObj);
+                }
+                else
+                    rhs = Expression.Constant(Convert.ChangeType(rawTokens[startIndex + 2].Value, lToken.CorrespondingType), lToken.CorrespondingType);
+            }
 
             if (op.Value == "==")
                 result = Expression.Lambda(
                     Expression.Equal(
-                        body,
+                        lhs,
                         rhs
                     )
-                , item);
+                , param);
             else if (op.Value == ">")
                 result = Expression.Lambda(
                     Expression.GreaterThan(
-                        body,
+                        lhs,
                         rhs
                     )
-                , item);
+                , param);
+            else if (op.Value == "+")
+            {
+                if (lToken.CorrespondingType != typeof(string))
+                    result = Expression.Lambda(
+                        Expression.Add(
+                            lhs,
+                            rhs
+                        )
+                    , param);
+                else
+                {
+                    var methodInfo = typeof(string).GetMethod("Concat", new[] { typeof(string), typeof(string) });
+                    result = Expression.Lambda(
+                        Expression.Call(
+                            methodInfo,
+                            lhs,
+                            rhs
+                        )
+                    , param);
+                }
+            }
+            else if (op.Value == "IN")
+            {
+                var methodInfo = (rhs as ConstantExpression).Value.GetType().GetMethod("Contains",new[] { lhs.Type });
+                result = Expression.Lambda(
+                        Expression.Call(rhs,
+                            methodInfo,
+                            Expression.Convert(lhs, typeof(object))
+                        )
+                    , param);
+            }
+            else if (op.Value == "NOTIN")
+            {
+                var methodInfo = (rhs as ConstantExpression).Value.GetType().GetMethod("Contains", new[] { lhs.Type });
+                result = Expression.Lambda(Expression.Not(
+                        Expression.Call(rhs,
+                            methodInfo,
+                            Expression.Convert(lhs, typeof(object))
+                        ))
+                    , param);
+            }
+
 
             return result;
         }
