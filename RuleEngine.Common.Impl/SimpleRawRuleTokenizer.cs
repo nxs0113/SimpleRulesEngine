@@ -29,6 +29,7 @@ namespace RuleEngine.Common.Impl
             {
                 if (_operatorTokens.ContainsKey(x)) return _operatorTokens[x];
                 if (_operandTokens.ContainsKey(x)) return _operandTokens[x];
+                
                 return new RuleToken() { Value = x,RuleTokenType = TokenType.Value};
             });
 
