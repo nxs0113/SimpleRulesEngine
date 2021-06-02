@@ -118,9 +118,44 @@ namespace RulesEngine.Core
                         rhs
                     )
                 , param);
+            else if (op.Value == "!=")
+                result = Expression.Lambda(
+                    Expression.NotEqual(
+                        lhs,
+                        rhs
+                    )
+                , param);
             else if (op.Value == ">")
                 result = Expression.Lambda(
                     Expression.GreaterThan(
+                        lhs,
+                        rhs
+                    )
+                , param);
+            else if (op.Value == ">=")
+                result = Expression.Lambda(
+                    Expression.GreaterThanOrEqual(
+                        lhs,
+                        rhs
+                    )
+                , param);
+            else if (op.Value == "<")
+                result = Expression.Lambda(
+                    Expression.GreaterThan(
+                        lhs,
+                        rhs
+                    )
+                , param);
+            else if (op.Value == "<=")
+                result = Expression.Lambda(
+                    Expression.GreaterThanOrEqual(
+                        lhs,
+                        rhs
+                    )
+                , param);
+            else if (op.Value == "-")
+                result = Expression.Lambda(
+                    Expression.Subtract(
                         lhs,
                         rhs
                     )
@@ -148,7 +183,7 @@ namespace RulesEngine.Core
             }
             else if (op.Value == "IN")
             {
-                var methodInfo = (rhs as ConstantExpression).Value.GetType().GetMethod("Contains",new[] { lhs.Type });
+                var methodInfo = (rhs as ConstantExpression).Value.GetType().GetMethod("Contains", new[] { lhs.Type });
                 result = Expression.Lambda(
                         Expression.Call(rhs,
                             methodInfo,
@@ -166,8 +201,24 @@ namespace RulesEngine.Core
                         ))
                     , param);
             }
-
-
+            else if (op.Value == "*")
+            {
+                result = Expression.Lambda(
+                    Expression.Multiply(
+                        lhs,
+                        rhs
+                    )
+                , param);
+            }
+            else if (op.Value == "/")
+            {
+                result = Expression.Lambda(
+                    Expression.Divide(
+                        lhs,
+                        rhs
+                    )
+                , param);
+            }
             return result;
         }
     }

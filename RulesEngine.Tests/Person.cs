@@ -13,6 +13,6 @@ namespace RulesEngine.Tests
         public double Age { get; set; }
         public List<string> Hobbies { get; set; }
 
-        public bool RuleApplied { get; set; }
+        public bool Vaccinated { get; set; }
     }
 }
